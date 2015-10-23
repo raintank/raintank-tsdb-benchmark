@@ -1,10 +1,9 @@
 #!/bin/bash
-echo "run this first: ./env-load -auth admin:admin -orgs 100 load"
 
-echo "creating list of all metrics you should have after an env-load with 100 orgs, 4 endpoints each, using dev-stack with 1 standard collector"
+orgs=$1
 
 fulllist=$(mktemp)
-for org in {1..100}; do
+for org in {1..$orgs}; do
   for endp in {1..4}; do
     cat env-load-metrics-patterns.txt | sed -e "s#\$org#$org#" -e "s#\$endp#$endp#" >> $fulllist
   done
@@ -18,6 +17,8 @@ function runTest () {
   local duration=$3
   f="results/$key-$range-$duration"
 
+  waitTimeBoundary
+
   echo "################## $1, $range time range. test duration: $duration ###################"
   sed "s#^#GET http://localhost:8888/render?target=\&from=-$span=#" | vegeta attack -duration 60s -rate 2000 > $f.bin
   cat $f.bin | vegeta report
@@ -25,16 +26,21 @@ function runTest () {
   cat $f.bin | vegeta report -reporter=plot > $f.html
 }
 
-# waits until the clock is a nice round number, divisible by 10 minutes
+# waits until the clock is a nice round number, divisible by 10 minutes, at least 10 or more minutes in the future.
 function waitTimeBoundary() {
   now=$(date +%s)
-  nextMark=$(( $(( $(date -d '+ 10 minutes' +%s) / 600)) * 600))
+  nextMark=$(( $(( $(date -d '+ 20 minutes' +%s) / 600)) * 600))
   diff=$(($nextMark - $now))
-  echo sleeping $diff
+  echo waiting $diff seconds for next test...
   #sleep $diff
 }
 
-waitTimeBoundary
+head -n 1 $fulllist | runTest "min-diversity" 5min 60s
+cat $fulllist | runTest "max-diversity" 5min 60s
+
+head -n 1 $fulllist | runTest "min-diversity" 1h 60s
+cat $fulllist | runTest "max-diversity" 1h 60s
+
 head -n 1 $fulllist | runTest "min-diversity" 24h 60s
-waitTimeBoundary
 cat $fulllist | runTest "max-diversity" 24h 60s
+
