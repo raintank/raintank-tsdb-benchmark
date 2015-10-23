@@ -8,7 +8,7 @@ if [ -z "$orgs" ]; then
 fi
 
 fulllist=$(mktemp)
-for org in {1..$orgs}; do
+for org in $(seq 1 $orgs); do
   for endp in {1..4}; do
     cat env-load-metrics-patterns.txt | sed -e "s#\$org#$org#" -e "s#\$endp#$endp#" >> $fulllist
   done
