@@ -2,6 +2,11 @@
 
 orgs=$1
 
+if [ -z "$orgs" ]; then
+  echo "specify number of orgs as \$1" >&1
+  exit 2
+fi
+
 fulllist=$(mktemp)
 for org in {1..$orgs}; do
   for endp in {1..4}; do
@@ -19,20 +24,22 @@ function runTest () {
 
   waitTimeBoundary
 
-  echo "################## $1, $range time range. test duration: $duration ###################"
+  echo "################## $(date): $1, $range time range. test duration: $duration START ###################"
   sed "s#^#GET http://localhost:8888/render?target=\&from=-$span=#" | vegeta attack -duration 60s -rate 2000 > $f.bin
   cat $f.bin | vegeta report
   cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]"
   cat $f.bin | vegeta report -reporter=plot > $f.html
+  echo "################## $(date): $1, $range time range. test duration: $duration DONE ###################"
 }
 
 # waits until the clock is a nice round number, divisible by 10 minutes, at least 10 or more minutes in the future.
 function waitTimeBoundary() {
   now=$(date +%s)
-  nextMark=$(( $(( $(date -d '+ 20 minutes' +%s) / 600)) * 600))
+  #nextMark=$(( $(( $(date -d '+ 20 minutes' +%s) / 600)) * 600))
+  nextMark=$(( $(( $(date -d '+ 2 minutes' +%s) / 60)) * 60))
   diff=$(($nextMark - $now))
   echo waiting $diff seconds for next test...
-  #sleep $diff
+  sleep $diff
 }
 
 head -n 1 $fulllist | runTest "min-diversity" 5min 60s
