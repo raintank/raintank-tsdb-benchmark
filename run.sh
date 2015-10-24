@@ -26,18 +26,20 @@ function runTest () {
   local range=$2
   local duration=$3
   local rate=$4
-  f="results/$key-$range-$duration"
+  f="results/$key-$range-$duration-$rate"
 
   waitTimeBoundary 1
 
-  echo "################## $(date): $1, $range time range. test duration: $duration START ###################"
-  postEvent "bench-start" "" "benchmark $1, $range time range. test duration: $duration"
+  desc="$key - time range: $range - duration: $duration - rate: $rate"
+
+  echo "################## $(date): $desc START ###################"
+  postEvent "bench-start" "" "benchmark $desc"
   sed "s#^#GET http://localhost:8888/render?target=\&from=-$span=#" | vegeta attack -duration 60s -rate $rate > $f.bin
   cat $f.bin | vegeta report > $f.txt
   cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]" >> $f.txt
   cat $f.bin | vegeta report -reporter=plot > $f.html
   echo "################## $(date): $1, $range time range. test duration: $duration DONE ###################"
-  postEvent "bench-stop" "" "benchmark $1, $range time range. test duration: $duration"
+  postEvent "bench-stop" "" "benchmark $desc"
 }
 
 # for an arg of e.g. 10 minutes,
@@ -54,7 +56,7 @@ function waitTimeBoundary() {
   sleep $diff
 }
 
-waitTimeBoundary 1
+#waitTimeBoundary 1
 postEvent "env-load start" "" "env-load loading $orgs orgs"
 env-load -orgs $orgs load
 postEvent "env-load finished" "" "env-load loaded $orgs orgs"
@@ -65,12 +67,12 @@ echo "press a key to proceed when ready"
 read
 echo "continuing..."
 
-head -n 3 $fulllist | runTest "min-diversity" 5min 60s 1000
-cat $fulllist | runTest "max-diversity" 5min 60s 1000
+head -n 3 $fulllist | runTest "min-diversity" 5min 180s 200
+cat $fulllist | runTest "max-diversity" 5min 180s 200
 
-head -n 3 $fulllist | runTest "min-diversity" 1h 60s 200
-cat $fulllist | runTest "max-diversity" 1h 60s 200
+head -n 3 $fulllist | runTest "min-diversity" 1h 180s 100
+cat $fulllist | runTest "max-diversity" 1h 180s 100
 
-head -n 3 $fulllist | runTest "min-diversity" 24h 60s 200
-cat $fulllist | runTest "max-diversity" 24h 60s 200
+head -n 3 $fulllist | runTest "min-diversity" 24h 180s 100
+cat $fulllist | runTest "max-diversity" 24h 180s 100
 
