@@ -16,6 +16,10 @@ done
 
 echo "list is at $fulllist -- it is $(wc -l $fulllist) lines long"
 
+function postEvent() {
+  curl -X POST "localhost:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
+}
+
 function runTest () {
   local key=$1
   local range=$2
@@ -25,11 +29,13 @@ function runTest () {
   waitTimeBoundary
 
   echo "################## $(date): $1, $range time range. test duration: $duration START ###################"
+  postEvent "bench-start" "" "benchmark $1, $range time range. test duration: $duration"
   sed "s#^#GET http://localhost:8888/render?target=\&from=-$span=#" | vegeta attack -duration 60s -rate 2000 > $f.bin
   cat $f.bin | vegeta report
   cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]"
   cat $f.bin | vegeta report -reporter=plot > $f.html
   echo "################## $(date): $1, $range time range. test duration: $duration DONE ###################"
+  postEvent "bench-stop" "" "benchmark $1, $range time range. test duration: $duration"
 }
 
 # waits until the clock is a nice round number, divisible by 10 minutes, at least 10 or more minutes in the future.
