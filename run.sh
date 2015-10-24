@@ -34,11 +34,11 @@ function runTest () {
 
   echo "################## $(date): $desc START ###################"
   postEvent "bench-start" "" "benchmark $desc"
-  vegeta attack -duration 60s -rate $rate > $f.bin
+  vegeta attack -duration $duration -rate $rate > $f.bin
   cat $f.bin | vegeta report > $f.txt
   cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]" >> $f.txt
   cat $f.bin | vegeta report -reporter=plot > $f.html
-  echo "################## $(date): $1, $range time range. test duration: $duration DONE ###################"
+  echo "################## $(date): $desc DONE ###################"
   postEvent "bench-stop" "" "benchmark $desc"
 }
 
@@ -56,7 +56,6 @@ function waitTimeBoundary() {
   sleep $diff
 }
 
-waitTimeBoundary 1
 postEvent "env-load start" "" "env-load loading $orgs orgs"
 env-load -orgs $orgs load
 postEvent "env-load finished" "" "env-load loaded $orgs orgs"
