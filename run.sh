@@ -10,11 +10,11 @@ fi
 function writePatterns () {
   fulllist=$(mktemp)
   for org in $(seq 1 $orgs); do
+    oid=$(($org +1))  # the id in mysql is the number + 1, because we start out with id 1 for master account.
     for endp in {1..4}; do
-      cat env-load-metrics-patterns.txt | sed -e "s#\$org#$org#" -e "s#\$endp#$endp#" >> $fulllist
+      cat env-load-metrics-patterns.txt | sed -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\nX-Org-Id: $oid\n#" >> $fulllist
     done
   done
-  echo "metric patterns are at $fulllist -- it is $(cat $fulllist | wc -l) lines long"
 }
 
 function postEvent() {
@@ -25,15 +25,16 @@ function runTest () {
   local key=$1
   local range=$2
   local duration=$3
+  local rate=$4
   f="results/$key-$range-$duration"
 
   waitTimeBoundary 1
 
   echo "################## $(date): $1, $range time range. test duration: $duration START ###################"
   postEvent "bench-start" "" "benchmark $1, $range time range. test duration: $duration"
-  sed "s#^#GET http://localhost:8888/render?target=\&from=-$span=#" | vegeta attack -duration 60s -rate 200 > $f.bin
-  cat $f.bin | vegeta report
-  cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]"
+  sed "s#^#GET http://localhost:8888/render?target=\&from=-$span=#" | vegeta attack -duration 60s -rate $rate > $f.bin
+  cat $f.bin | vegeta report > $f.txt
+  cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]" >> $f.txt
   cat $f.bin | vegeta report -reporter=plot > $f.html
   echo "################## $(date): $1, $range time range. test duration: $duration DONE ###################"
   postEvent "bench-stop" "" "benchmark $1, $range time range. test duration: $duration"
@@ -64,12 +65,12 @@ echo "press a key to proceed when ready"
 read
 echo "continuing..."
 
-head -n 1 $fulllist | runTest "min-diversity" 5min 60s
-cat $fulllist | runTest "max-diversity" 5min 60s
+head -n 3 $fulllist | runTest "min-diversity" 5min 60s 1000
+cat $fulllist | runTest "max-diversity" 5min 60s 1000
 
-head -n 1 $fulllist | runTest "min-diversity" 1h 60s
-cat $fulllist | runTest "max-diversity" 1h 60s
+head -n 3 $fulllist | runTest "min-diversity" 1h 60s 200
+cat $fulllist | runTest "max-diversity" 1h 60s 200
 
-head -n 1 $fulllist | runTest "min-diversity" 24h 60s
-cat $fulllist | runTest "max-diversity" 24h 60s
+head -n 3 $fulllist | runTest "min-diversity" 24h 60s 200
+cat $fulllist | runTest "max-diversity" 24h 60s 200
 
