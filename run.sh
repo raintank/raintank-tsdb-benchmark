@@ -36,7 +36,7 @@ function runTest () {
   postEvent "bench-start" "" "benchmark $desc"
   vegeta attack -duration $duration -rate $rate > $f.bin
   cat $f.bin | vegeta report > $f.txt
-  cat $f.bin | vegeta report -reporter="hist[0,100ms,200ms,300ms]" >> $f.txt
+  cat $f.bin | vegeta report -reporter="hist[0,50ms,100ms,200ms,400ms,750ms,1000ms,1500ms,2500ms,5000ms]" >> $f.txt
   cat $f.bin | vegeta report -reporter=plot > $f.html
   echo "################## $(date): $desc DONE ###################"
   postEvent "bench-stop" "" "benchmark $desc"
