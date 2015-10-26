@@ -18,6 +18,7 @@ make sure you have a good open file handles limit. see https://rtcamp.com/tutori
 3. ./launch_dev.sh
     runs standard dev-stack with one collector
 4. verify measure, graphite-watcher, grafana are running in screen. login to grafana and check that sys dashboard works.
+5. ./delay_collector.sh
 5. ./run.sh 100
 6. when it completes, the results are only valid if:
    * the sys dashboard shows a lag <= something reasonable like 30s

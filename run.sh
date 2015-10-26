@@ -53,7 +53,7 @@ function waitTimeBoundary() {
 }
 
 postEvent "env-load start" "" "env-load loading $orgs orgs"
-env-load -orgs $orgs load
+env-load -orgs $orgs -monhost raintankdocker_grafana_1 load
 postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 
 total=$(($orgs * 4 * 30))
