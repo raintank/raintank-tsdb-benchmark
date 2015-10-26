@@ -28,7 +28,6 @@ function runTest () {
   local rate=$4
   f="results/$key-$range-$duration-$rate"
 
-  waitTimeBoundary 1
 
   desc="$key - time range: $range - duration: $duration - rate: $rate"
 
@@ -42,15 +41,12 @@ function runTest () {
   postEvent "bench-stop" "" "benchmark $desc"
 }
 
-# for an arg of e.g. 10 minutes,
-# waits until the clock is a nice round number, divisible by 10 minutes, at least 10 or more minutes in the future.
-# so between 10 and 20 minutes from now.
+# waits until the clock is a nice round number, divisible by $2 seconds, at least $1 seconds or more in the future.
 function waitTimeBoundary() {
-  local minutes=$1
-  local seconds=$((minutes * 60))
-  local twiceMinutes=$(($minutes * 2))
+  local minGap=$1
+  local boundary=$2
   now=$(date +%s)
-  nextMark=$(( $(( $(date -d "+ $twiceMinutes minutes" +%s) / $seconds)) * $seconds))
+  nextMark=$(( $(( $(date -d "+ "$((minGap + boundary))" seconds" +%s) / $boundary)) * $boundary))
   diff=$(($nextMark - $now))
   echo waiting $diff seconds
   sleep $diff
@@ -65,12 +61,21 @@ echo "press a key to proceed when ready"
 read
 echo "continuing..."
 
+waitTimeBoundary 0 60
 targets 5min | head -n 3 | runTest "min-diversity" 5min 180s 200
+
+waitTimeBoundary 20 60
 targets 5min | runTest "max-diversity" 5min 180s 200
 
+waitTimeBoundary 20 60
 targets 1h | head -n 3 | runTest "min-diversity" 1h 180s 100
+
+waitTimeBoundary 20 60
 targets 1h | runTest "max-diversity" 1h 180s 100
 
+waitTimeBoundary 20 60
 targets 24h | head -n 3 | runTest "min-diversity" 24h 180s 100
+
+waitTimeBoundary 20 60
 targets 24h | runTest "max-diversity" 24h 180s 100
 
