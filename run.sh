@@ -56,10 +56,18 @@ postEvent "env-load start" "" "env-load loading $orgs orgs"
 env-load -orgs $orgs load
 postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 
-echo "please wait for $orgs (orgs) * 4 (endpoints per org) * 30 = $(($orgs * 4 * 30)) metrics to show up in ES (see sys dashboard)"
-echo "press a key to proceed when ready"
-read
-echo "continuing..."
+total=$(($orgs * 4 * 30))
+echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 30 = $total metrics to show up in ES... (see also sys dashboard)"
+echo "this shouldn't take more than a minute.."
+num=0
+while true; do
+  num=$(wget --quiet -O - 'http://localhost:8086/db/raintank/series?p=graphite&q=select+last(value)+from+%22graphite-watcher.num_metrics%22+where+time+%3E+now()-5m+order+asc&u=graphite' | sed -e 's#.*,##' -e 's#].*##')
+  [ $num -eq $total ] && break
+  echo "$(date) $num metrics..."
+  sleep 10
+done
+echo "$(date) $num metrics!"
+
 
 waitTimeBoundary 0 60
 targets 5min | head -n 3 | runTest "min-diversity" 5min 180s 200
