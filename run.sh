@@ -69,7 +69,7 @@ function waitTimeBoundary() {
 }
 
 postEvent "env-load start" "" "env-load loading $orgs orgs"
-#env-load -orgs $orgs -host http://$HOST/ -monhost raintankdocker_grafana_1 load
+env-load -orgs $orgs -host http://$HOST/ -monhost raintankdocker_grafana_1 load
 postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 
 total=$(($orgs * 4 * 30))
@@ -92,7 +92,7 @@ waitTimeBoundary 20 60
 targets 5min | runTest "max-diversity" 5min 180s $RATE_HIGH
 
 waitTimeBoundary 20 60
-targets 1h | head -n 3 | runTest "min-diversity" 1h 180s $RATE_HIGH
+targets 1h | head -n 3 | runTest "min-diversity" 1h 180s $RATE_LOW
 
 waitTimeBoundary 20 60
 targets 1h | runTest "max-diversity" 1h 180s $RATE_LOW
