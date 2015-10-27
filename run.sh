@@ -1,24 +1,30 @@
 #!/bin/bash
 
 orgs=$1
+HOST=$2
 
 if [ -z "$orgs" ]; then
   echo "specify number of orgs as \$1" >&1
   exit 2
 fi
 
+if [ -z "$HOST" ]; then
+  HOST=localhost
+fi
+
+
 function targets () {
   local range=$1
   for org in $(seq 1 $orgs); do
     oid=$(($org +1))  # the id in mysql is the number + 1, because we start out with id 1 for master account.
     for endp in {1..4}; do
-      sed -e "s#^#GET http://localhost:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#" env-load-metrics-patterns.txt
+      sed -e "s#^#GET http://$HOST:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#" env-load-metrics-patterns.txt
     done
   done
 }
 
 function postEvent() {
-  curl -X POST "localhost:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
+  curl -X POST "$HOST:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
 }
 
 function runTest () {
@@ -53,7 +59,7 @@ function waitTimeBoundary() {
 }
 
 postEvent "env-load start" "" "env-load loading $orgs orgs"
-env-load -orgs $orgs -monhost raintankdocker_grafana_1 load
+env-load -orgs $orgs -host $HOST -monhost raintankdocker_grafana_1 load
 postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 
 total=$(($orgs * 4 * 30))
@@ -61,7 +67,7 @@ echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 30 = $total metrics to 
 echo "this shouldn't take more than a minute.."
 num=0
 while true; do
-  num=$(wget --quiet -O - 'http://localhost:8086/db/raintank/series?p=graphite&q=select+last(value)+from+%22graphite-watcher.num_metrics%22+where+time+%3E+now()-5m+order+asc&u=graphite' | sed -e 's#.*,##' -e 's#].*##')
+  num=$(wget --quiet -O - "http://$HOST:8086/db/raintank/series?p=graphite&q=select+last(value)+from+%22graphite-watcher.num_metrics%22+where+time+%3E+now()-5m+order+asc&u=graphite" | sed -e 's#.*,##' -e 's#].*##')
   [ $num -eq $total ] && break
   echo "$(date) $num metrics..."
   sleep 10
