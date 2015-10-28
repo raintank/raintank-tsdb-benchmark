@@ -68,9 +68,13 @@ function waitTimeBoundary() {
   sleep $diff
 }
 
-postEvent "env-load start" "" "env-load loading $orgs orgs"
-env-load -orgs $orgs -host http://$HOST/ -monhost raintankdocker_grafana_1 load
-postEvent "env-load finished" "" "env-load loaded $orgs orgs"
+cur_orgs=$(env-load status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | uniq | wc -l)
+if [ "$orgs" -ne "$cur_orgs" ]; then
+  [ "$orgs" -gt 0 ] && env-load clean
+  postEvent "env-load start" "" "env-load loading $orgs orgs"
+  env-load -orgs $orgs -host http://$HOST/ -monhost raintankdocker_grafana_1 load
+  postEvent "env-load finished" "" "env-load loaded $orgs orgs"
+fi
 
 total=$(($orgs * 4 * 30))
 echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 30 = $total metrics to show up in ES... (see also sys dashboard)"
