@@ -19,15 +19,16 @@ make sure you have a good open file handles limit. see https://rtcamp.com/tutori
     runs standard dev-stack with one collector
 4. verify measure, graphite-watcher, grafana are running in screen. login to grafana and check that sys dashboard works.
 5. ./delay_collector.sh
-5. ./run.sh 100
-6. when it completes, the results are only valid if:
+6. rm logs/*
+7. ./run.sh 10 localhost 200 100
+8. when it completes, the results are only valid if:
    * the sys dashboard shows a lag <= something reasonable like 30s
    * run.sh/vegeta didn't show any errors, all requests were successfull.
    * graphite-watcher didn't error
    * graphite-api and cassandra didn't error
    * your host hard drive didn't run full, that tends to cause slowdowns
    * collector-controller didn't drop any checks/metrics
-7. your data is in the results directory and in the grafana dashboards, take a snapshot.
+9. your data is in the results directory and in the grafana dashboards, take a snapshot.
 
 # watch out for:
 ## high cpu due to wireless drivers
