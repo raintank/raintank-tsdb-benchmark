@@ -1,26 +1,23 @@
 #!/bin/bash
 
-orgs=$1
-HOST=$2
-RATE_HIGH=$3
-RATE_LOW=$4
+function die_error () {
+	echo "$@" >&2
+	exit 2
+}
 
-if [ -z "$orgs" ]; then
-  echo "specify number of orgs as \$1" >&1
-  exit 2
-fi
+[ -n "$1" -a -r "$1" ] || die_error "arg1 must be a readable config file"
+source "$1" || die_error "can't read config file"
 
-if [ -z "$HOST" ]; then
-  HOST=localhost
-fi
+[ -n "$orgs" ] || die_error 'need $orgs number of orgs'
+[ -n "$graphite_host" ] || die_error 'need $graphite_host'
+[ -n "$graphitemon_host" ] || die_error 'need $graphitemon_host'
+[ -n "$grafana_host" ] || die_error 'need $grafana_host'
+[ -n "$influxdb_host" ] || die_error 'need $influxdb_host'
+[ -n "$mon_host" ] || die_error 'need $mon_host'
+[ -n "$env" ] || die_error 'need $env'
+[ -n "$rate_high" ] || die_error 'need $rate_high'
+[ -n "$rate_low" ] || die_error 'need $rate_low'
 
-if [ -z "$RATE_HIGH" ]; then
-  RATE_HIGH=50
-fi
-
-if [ -z "$RATE_LOW" ]; then
-  RATE_LOW=50
-fi
 
 
 function targets () {
@@ -28,13 +25,13 @@ function targets () {
   for org in $(seq 1 $orgs); do
     oid=$(($org +1))  # the id in mysql is the number + 1, because we start out with id 1 for master account.
     for endp in {1..4}; do
-      sed -e "s#^#GET http://$HOST:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#" env-load-metrics-patterns.txt
+      sed -e "s#^#GET http://$graphite_host:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#" env-load-metrics-patterns.txt
     done
   done
 }
 
 function postEvent() {
-  curl -X POST "$HOST:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
+  curl -X POST "$influxdb_host:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
 }
 
 function runTest () {
@@ -72,7 +69,7 @@ cur_orgs=$(env-load status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | u
 if [ "$orgs" -ne "$cur_orgs" ]; then
   [ "$orgs" -gt 0 ] && env-load clean
   postEvent "env-load start" "" "env-load loading $orgs orgs"
-  env-load -orgs $orgs -host http://$HOST/ -monhost raintankdocker_grafana_1 load
+  env-load -orgs $orgs -host http://$grafana_host/ -monhost load
   postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 fi
 
@@ -81,7 +78,7 @@ echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 30 = $total metrics to 
 echo "this shouldn't take more than a minute.."
 num=0
 while true; do
-  num=$(wget --quiet -O - "http://$HOST:8086/db/raintank/series?p=graphite&q=select+last(value)+from+%22graphite-watcher.num_metrics%22+where+time+%3E+now()-5m+order+asc&u=graphite" | sed -e 's#.*,##' -e 's#].*##')
+  num=$(wget --quiet -O - "http://$graphitemon_host:8000/render/?target=graphite-watcher.$env&from=-2min&until=-10s&format=raw" | sed -e 's#.*,##')
   [ $num -eq $total ] && break
   echo "$(date) $num metrics..."
   sleep 10
@@ -90,20 +87,20 @@ echo "$(date) $num metrics!"
 
 
 waitTimeBoundary 0 60
-targets 5min | head -n 3 | runTest "min-diversity" 5min 180s $RATE_HIGH
+targets 5min | head -n 3 | runTest "min-diversity" 5min 180s $rate_high
 
 waitTimeBoundary 20 60
-targets 5min | runTest "max-diversity" 5min 180s $RATE_HIGH
+targets 5min | runTest "max-diversity" 5min 180s $rate_high
 
 waitTimeBoundary 20 60
-targets 1h | head -n 3 | runTest "min-diversity" 1h 180s $RATE_LOW
+targets 1h | head -n 3 | runTest "min-diversity" 1h 180s $rate_low
 
 waitTimeBoundary 20 60
-targets 1h | runTest "max-diversity" 1h 180s $RATE_LOW
+targets 1h | runTest "max-diversity" 1h 180s $rate_low
 
 waitTimeBoundary 20 60
-targets 24h | head -n 3 | runTest "min-diversity" 24h 180s $RATE_LOW
+targets 24h | head -n 3 | runTest "min-diversity" 24h 180s $rate_low
 
 waitTimeBoundary 20 60
-targets 24h | runTest "max-diversity" 24h 180s $RATE_LOW
+targets 24h | runTest "max-diversity" 24h 180s $rate_low
 

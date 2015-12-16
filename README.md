@@ -20,7 +20,7 @@ make sure you have a good open file handles limit. see https://rtcamp.com/tutori
 4. verify measure, graphite-watcher, grafana are running in screen. login to grafana and check that sys dashboard works.
 5. ./delay_collector.sh
 6. rm logs/*
-7. ./run.sh 10 localhost 200 100
+7. ./run.sh <config-file>  # see raintank-docker.conf as an example
 8. when it completes, the results are only valid if:
    * the sys dashboard shows a lag <= something reasonable like 30s
    * run.sh/vegeta didn't show any errors, all requests were successfull.
