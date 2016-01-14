@@ -69,7 +69,7 @@ cur_orgs=$(env-load status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | u
 if [ "$orgs" -ne "$cur_orgs" ]; then
   [ "$orgs" -gt 0 ] && env-load clean
   postEvent "env-load start" "" "env-load loading $orgs orgs"
-  env-load -orgs $orgs -host http://$grafana_host/ -monhost load
+  env-load -orgs $orgs -host http://$grafana_host/ -monhost $mon_host load
   postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 fi
 
