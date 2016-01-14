@@ -32,7 +32,8 @@ function targets () {
   for org in $(seq 1 $orgs); do
     oid=$(($org +1))  # the id in mysql is the number + 1, because we start out with id 1 for master account.
     for endp in {1..4}; do
-      sed -e "s#^#GET http://$graphite_host:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#" env-load-metrics-patterns.txt | egrep -v 'dns.(ttl|answers|default|time)'
+	      egrep -v 'dns.(ttl|answers|default|time)' env-load-metrics-patterns.txt | \
+      sed -e "s#^#GET http://$graphite_host:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#"
     done
   done
 }
@@ -84,7 +85,7 @@ metriclist > results/metriclist.txt
 echo "all the metrics should be in results/metriclist.txt, use inspect-es to compare"
 
 total=$(($orgs * 4 * 26))
-echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 29 = $total metrics to show up in ES... (see also sys dashboard)"
+echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 26 = $total metrics to show up in ES... (see also sys dashboard)"
 echo "this shouldn't take more than a minute.."
 num=0
 while true; do
