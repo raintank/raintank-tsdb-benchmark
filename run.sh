@@ -19,6 +19,13 @@ source "$1" || die_error "can't read config file"
 [ -n "$rate_low" ] || die_error 'need $rate_low'
 
 
+function metriclist () {
+  for org in $(seq 1 $orgs); do
+    for endp in {1..4}; do
+      sed -e "s#\$org#$org#" -e "s#\$endp#$endp#" env-load-metrics-patterns.txt
+    done
+  done
+}
 
 function targets () {
   local range=$1
@@ -72,6 +79,9 @@ if [ "$orgs" -ne "$cur_orgs" ]; then
   env-load -orgs $orgs -host http://$grafana_host/ -monhost $mon_host load
   postEvent "env-load finished" "" "env-load loaded $orgs orgs"
 fi
+
+metriclist > results/metriclist.txt
+echo "all the metrics should be in results/metriclist.txt, use inspect-es to compare"
 
 total=$(($orgs * 4 * 30))
 echo "waiting for $orgs (orgs) * 4 (endpoints per org) * 30 = $total metrics to show up in ES... (see also sys dashboard)"
