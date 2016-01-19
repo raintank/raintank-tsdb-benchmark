@@ -12,7 +12,7 @@ source "$1" || die_error "can't read config file"
 [ -n "$graphite_host" ] || die_error 'need $graphite_host'
 [ -n "$graphitemon_host" ] || die_error 'need $graphitemon_host'
 [ -n "$grafana_host" ] || die_error 'need $grafana_host'
-[ -n "$influxdb_host" ] || die_error 'need $influxdb_host'
+[ -n "$elasticsearch_host" ] || die_error 'need $elasticsearch_host'
 [ -n "$mon_host" ] || die_error 'need $mon_host'
 [ -n "$env" ] || die_error 'need $env'
 [ -n "$rate_high" ] || die_error 'need $rate_high'
@@ -39,7 +39,9 @@ function targets () {
 }
 
 function postEvent() {
-  curl -X POST "$influxdb_host:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
+  D=$(( $(date +%s) * 1000))
+  payload='{"timestamp": '$D',"type": "'$1'","tags": "'$2'","text": "'$3'"}'
+  curl -X POST "$elasticsearch_host:9200/benchmark/event?" -d "$payload"
 }
 
 function runTest () {
@@ -73,9 +75,9 @@ function waitTimeBoundary() {
   sleep $diff
 }
 
-cur_orgs=$(env-load status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | uniq | wc -l)
+cur_orgs=$(env-load -host http://$grafana_host/ status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | uniq | wc -l)
 if [ "$orgs" -ne "$cur_orgs" ]; then
-  [ "$orgs" -gt 0 ] && env-load clean
+  [ "$orgs" -gt 0 ] && env-load -host http://$grafana_host/ clean
   postEvent "env-load start" "" "env-load loading $orgs orgs"
   env-load -orgs $orgs -host http://$grafana_host/ -monhost $mon_host load
   postEvent "env-load finished" "" "env-load loaded $orgs orgs"
@@ -90,7 +92,7 @@ echo "this shouldn't take more than a minute.."
 num=0
 while true; do
   num=$(wget --quiet -O - "http://$graphitemon_host:8000/render/?target=graphite-watcher.$env.num_metrics&from=-2min&until=-10s&format=raw" | sed -e 's#.*,##')
-  [ "$num" == "${total}.0" ] && break
+  (( $(echo  "$num >=  $total"|bc -l) )) && break
   [ -z "$num" ] && echo "WARN: unable to parse proper graphite-watcher.$env.num_metrics value from graphite"
   echo "$(date) $num/$total metrics..."
   sleep 10
