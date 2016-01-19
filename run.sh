@@ -31,7 +31,7 @@ function targets () {
   local range=$1
   for org in $(seq 1 $orgs); do
     oid=$(($org +1))  # the id in mysql is the number + 1, because we start out with id 1 for master account.
-    for endp in {1..4}; doyyyyMMddTHHmmss.SSSZ
+    for endp in {1..4}; do
 	      egrep -v 'dns.(ttl|answers|default|time)' env-load-metrics-patterns.txt | \
       sed -e "s#^#GET http://$graphite_host:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#"
     done
@@ -41,7 +41,7 @@ function targets () {
 function postEvent() {
   D=$(( $(date +%s) * 1000))
   payload='{"timestamp": '$D',"type": "'$1'","tags": "'$2'","text": "'$3'"}'
-  curl -X POST "$elasticsearch:9200/benchmark/event?" -d "$payload"
+  curl -X POST "$elasticsearch_host:9200/benchmark/event?" -d "$payload"
 }
 
 function runTest () {
@@ -75,9 +75,9 @@ function waitTimeBoundary() {
   sleep $diff
 }
 
-cur_orgs=$(env-load status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | uniq | wc -l)
+cur_orgs=$(env-load -host http://$grafana_host/ status 2>/dev/null | awk '/fake_user/ {print $2}' | sort | uniq | wc -l)
 if [ "$orgs" -ne "$cur_orgs" ]; then
-  [ "$orgs" -gt 0 ] && env-load clean
+  [ "$orgs" -gt 0 ] && env-load -host http://$grafana_host/ clean
   postEvent "env-load start" "" "env-load loading $orgs orgs"
   env-load -orgs $orgs -host http://$grafana_host/ -monhost $mon_host load
   postEvent "env-load finished" "" "env-load loaded $orgs orgs"
