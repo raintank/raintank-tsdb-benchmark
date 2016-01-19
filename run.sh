@@ -12,7 +12,7 @@ source "$1" || die_error "can't read config file"
 [ -n "$graphite_host" ] || die_error 'need $graphite_host'
 [ -n "$graphitemon_host" ] || die_error 'need $graphitemon_host'
 [ -n "$grafana_host" ] || die_error 'need $grafana_host'
-[ -n "$influxdb_host" ] || die_error 'need $influxdb_host'
+[ -n "$elasticsearch_host" ] || die_error 'need $elasticsearch_host'
 [ -n "$mon_host" ] || die_error 'need $mon_host'
 [ -n "$env" ] || die_error 'need $env'
 [ -n "$rate_high" ] || die_error 'need $rate_high'
@@ -31,7 +31,7 @@ function targets () {
   local range=$1
   for org in $(seq 1 $orgs); do
     oid=$(($org +1))  # the id in mysql is the number + 1, because we start out with id 1 for master account.
-    for endp in {1..4}; do
+    for endp in {1..4}; doyyyyMMddTHHmmss.SSSZ
 	      egrep -v 'dns.(ttl|answers|default|time)' env-load-metrics-patterns.txt | \
       sed -e "s#^#GET http://$graphite_host:8888/render?target=#" -e "s#\$org#$org#" -e "s#\$endp#$endp#" -e "s#\$#\&from=-$range\nX-Org-Id: $oid\n#"
     done
@@ -39,7 +39,9 @@ function targets () {
 }
 
 function postEvent() {
-  curl -X POST "$influxdb_host:8086/db/raintank/series?u=graphite&p=graphite" -d '[{"name": "events","columns": ["type","tags","text"],"points": [['"\"$1\", \"$2\",\"$3\"]]}]"
+  D=$(( $(date +%s) * 1000))
+  payload='{"timestamp": '$D',"type": "'$1'","tags": "'$2'","text": "'$3'"}'
+  curl -X POST "$elasticsearch:9200/benchmark/event?" -d "$payload"
 }
 
 function runTest () {
