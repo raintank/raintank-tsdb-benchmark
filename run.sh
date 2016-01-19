@@ -92,7 +92,7 @@ echo "this shouldn't take more than a minute.."
 num=0
 while true; do
   num=$(wget --quiet -O - "http://$graphitemon_host:8000/render/?target=graphite-watcher.$env.num_metrics&from=-2min&until=-10s&format=raw" | sed -e 's#.*,##')
-  [ "$num" == "${total}.0" ] && break
+  (( $(echo  "$num >=  $total"|bc -l) )) && break
   [ -z "$num" ] && echo "WARN: unable to parse proper graphite-watcher.$env.num_metrics value from graphite"
   echo "$(date) $num/$total metrics..."
   sleep 10
