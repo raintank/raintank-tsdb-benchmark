@@ -41,7 +41,7 @@ function targets () {
 function postEvent() {
   D=$(( $(date +%s) * 1000))
   payload='{"timestamp": '$D',"type": "'$1'","tags": "'$2'","text": "'$3'"}'
-  curl -X POST "$elasticsearch_host:9200/benchmark/event?" -d "$payload"
+  curl -X POST "$elasticsearch_host:9200/benchmark/event?" -d "$payload" >/dev/null
 }
 
 function runTest () {
